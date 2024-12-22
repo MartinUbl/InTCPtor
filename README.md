@@ -1,5 +1,7 @@
 # InTCPtor
 
+![Build](https://github.com/MartinUbl/InTCPtor/actions/workflows/cmake-single-platform.yml/badge.svg)
+
 The InTCPtor (pronounced: interceptor) is a library that intercepts TCP-related BSD socket function calls and introduces delays, message fragmentation and more.
 
 This software is developed for KIV/UPS (Fundamentals of Computer Networks, CZ: Úvod do počítačových sítí) semestral work evaluation process. 
