@@ -19,6 +19,8 @@
 #include <thread>
 #include <chrono>
 #include <mutex>
+#include <queue>
+#include <condition_variable>
 
 namespace {
 
@@ -48,6 +50,59 @@ namespace orig {
     ssize_t (*read)(int, void*, size_t) = nullptr;
     ssize_t (*write)(int, const void*, size_t) = nullptr;
 }
+
+class COutput_Timed_Queue {
+    public:
+        COutput_Timed_Queue() {
+            _worker = std::thread(&COutput_Timed_Queue::worker, this);
+        }
+
+        virtual ~COutput_Timed_Queue() {
+            _running = false;
+            _worker.join();
+        }
+
+        void push(int target_socket, size_t delay, const char* data, size_t len) {
+            std::unique_lock<std::mutex> lock(_mutex);
+            _queue.push({target_socket, delay, std::vector<char>(data, data + len)});
+            _cond.notify_one();
+        }
+
+    private:
+        void worker() {
+            while (_running) {
+                std::unique_lock<std::mutex> lock(_mutex);
+                _cond.wait_for(lock, std::chrono::milliseconds(100), [this] { return !_queue.empty() || !_running; });
+
+                while (!_queue.empty()) {
+                    const TOut_Data& data = _queue.front();
+                    lock.unlock();
+
+                    std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(data.delay)));
+
+                    orig::send(data.target_socket, data.data.data(), data.data.size(), 0);
+
+                    lock.lock();
+
+                    _queue.pop();
+                }
+            }
+        }
+
+        struct TOut_Data {
+            int target_socket;
+            size_t delay;
+            std::vector<char> data;
+        };
+
+        std::thread _worker;
+        std::mutex _mutex;
+        std::condition_variable _cond;
+        std::queue<TOut_Data> _queue;
+        bool _running = true;
+};
+
+COutput_Timed_Queue _output_queue;
 
 // guard class to resolve original functions on startup
 class CStartup_Guard {
@@ -190,11 +245,9 @@ extern "C" ssize_t send(int sockfd, const void *buf, size_t count, int flags) {
             lcount = count - offset;
         }
 
-        ssize_t localres = orig::send(sockfd, reinterpret_cast<const char*>(buf) + offset, lcount, flags);
+        res += lcount;
 
-        res += localres;
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(100 + dist(reng) * 300)));
+        _output_queue.push(sockfd, static_cast<size_t>(dist(reng) * 1000), reinterpret_cast<const char*>(buf) + offset, lcount);
     };
 
     bool adjusted = false;
@@ -206,27 +259,27 @@ extern "C" ssize_t send(int sockfd, const void *buf, size_t count, int flags) {
             adjusted = true;
 
             if (chance > 0.9) {
-                std::cout << "[[InTCPtor: send() original count = " << count << ", adjusted to 1B sends]]" << std::endl;
                 for (size_t i = 0; i < count; i++) {
                     adjusted_send(i, 1);
                 }
+                std::cout << "[[InTCPtor: send() original count = " << count << ", adjusted to 1B sends]]" << std::endl;
             }
             else if (chance > 0.6) {
-                std::cout << "[[InTCPtor: send() original count = " << count << ", adjusted to 2 separate sends]]" << std::endl;
                 const size_t half = count / 2;
                 adjusted_send(0, half);
                 adjusted_send(half, count - half);
+                std::cout << "[[InTCPtor: send() original count = " << count << ", adjusted to 2 separate sends]]" << std::endl;
             }
             else if (chance > 0.4) {
-                std::cout << "[[InTCPtor: send() original count = " << count << ", adjusted to 2B sends and second send]]" << std::endl;
                 adjusted_send(0, 2);
                 adjusted_send(2, count - 2);
+                std::cout << "[[InTCPtor: send() original count = " << count << ", adjusted to 2B sends and second send]]" << std::endl;
             }
             else {
-                std::cout << "[[InTCPtor: send() original count = " << count << ", adjusted to 2B sends]]" << std::endl;
                 for (size_t i = 0; i < count; i += 2) {
                     adjusted_send(i, 2);
                 }
+                std::cout << "[[InTCPtor: send() original count = " << count << ", adjusted to 2B sends]]" << std::endl;
             }
         }
     }
