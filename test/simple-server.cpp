@@ -139,7 +139,7 @@ int main(int argc, char** argv) {
                         send(sd, "ABCDhellothere\n", 15, 0);
                     } else { 
                         std::cerr << "Invalid message format" << std::endl;
-                        to_remove.insert(sd);
+                        //to_remove.insert(sd);
                     }
                 }
             }
