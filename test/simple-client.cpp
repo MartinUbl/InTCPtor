@@ -7,6 +7,9 @@
 #include <stdlib.h>
 #include <arpa/inet.h>
 
+#include <thread>
+#include <chrono>
+
 int main(int argc, char** argv) {
 
 	// store IP address and port number from argv
@@ -48,18 +51,23 @@ int main(int argc, char** argv) {
 		return 2;
 	}
 
-	send(client_socket, "ABCDtest\n", 9, 0);
-	send(client_socket, "ABCDtesttest\n", 13, 0);
+	for (size_t ii = 0; ii < 10; ii++) {
 
-	char buf[128];
-	memset(buf, 0, 128);
+		send(client_socket, "ABCDtest\n", 9, 0);
+		send(client_socket, "ABCDtesttest\n", 13, 0);
 
-	size_t pos = 0;
-	do {
-		recv(client_socket, buf + pos, 1, 0);
-	} while (buf[pos] != '\n' && ++pos < 128);
+		char buf[128];
+		memset(buf, 0, 128);
 
-	std::cout << "Received: " << buf << std::endl;
+		size_t pos = 0;
+		do {
+			recv(client_socket, buf + pos, 1, 0);
+		} while (buf[pos] != '\n' && ++pos < 128);
+
+		std::cout << "Received: " << buf << std::endl;
+
+		std::this_thread::sleep_for(std::chrono::seconds(2));
+	}
 	
 	close(client_socket);
 
