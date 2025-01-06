@@ -76,7 +76,8 @@ extern "C" int close(int fd) {
 // override accept() to track accepted sockets
 extern "C" int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen) {
 
-    std::unique_lock<std::recursive_mutex> lock(intcptor::glob_mutex);
+    //std::unique_lock<std::recursive_mutex> lock(intcptor::glob_mutex);
+    // not locking here, as accept call may block
 
     int res = orig::accept(sockfd, addr, addrlen);
 
@@ -114,6 +115,9 @@ extern "C" ssize_t recv(int sockfd, void *buf, size_t count, int flags) {
             std::cout << "[[InTCPtor: recv() original count = " << orig << ", adjusted = " << count << "]]" << std::endl;
         }
     }
+
+    // no longer needed
+    lock.unlock();
 
     ssize_t res = orig::recv(sockfd, buf, count, flags);
 
@@ -173,6 +177,9 @@ extern "C" ssize_t send(int sockfd, const void *buf, size_t count, int flags) {
             }
         }
     }
+
+    // no longer needed
+    lock.unlock();
 
     if (!adjusted) {
         ssize_t res = orig::send(sockfd, buf, count, flags);
