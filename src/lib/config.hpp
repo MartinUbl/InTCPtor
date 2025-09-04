@@ -26,7 +26,7 @@ class CConfig {
         double mSend_Delay_Ms_Mean = 100;
         double mSend_Delay_Ms_Sigma = 10;
 
-        bool mDrop_Connections = true;
+        bool mDrop_Connections = false;
         size_t mDrop_Connection_Delay_Ms_Min = 5000;
         size_t mDrop_Connection_Delay_Ms_Max = 15000;
 

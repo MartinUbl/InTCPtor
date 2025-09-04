@@ -28,7 +28,9 @@ CRandom_Socket_Closer::CRandom_Socket_Closer() {
 
 CRandom_Socket_Closer::~CRandom_Socket_Closer() {
     _running = false;
-    _worker.join();
+    if (_worker.joinable()) {
+        _worker.join();
+    }
 }
 
 void CRandom_Socket_Closer::worker() {

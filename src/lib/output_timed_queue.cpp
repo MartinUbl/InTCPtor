@@ -35,16 +35,17 @@ void COutput_Timed_Queue::worker() {
         _cond.wait_for(lock, std::chrono::milliseconds(100), [this] { return !_queue.empty() || !_running; });
 
         while (!_queue.empty()) {
-            const TOut_Data& data = _queue.front();
+            const TOut_Data data = std::move(_queue.front());
+            _queue.pop();
+
             lock.unlock();
 
             std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(data.delay)));
 
-            orig::send(data.target_socket, data.data.data(), data.data.size(), 0);
-
             lock.lock();
 
-            _queue.pop();
+            std::cout << "[[InTCPtor: sending " << std::string(data.data.data(), data.data.size()) << " bytes to socket " << data.target_socket << " after delay of " << data.delay << " ms]]" << std::endl;
+            orig::send(data.target_socket, data.data.data(), data.data.size(), 0);
         }
     }
 }

@@ -178,14 +178,15 @@ extern "C" ssize_t send(int sockfd, const void *buf, size_t count, int flags) {
         }
     }
 
-    // no longer needed
-    lock.unlock();
-
     if (!adjusted) {
-        ssize_t res = orig::send(sockfd, buf, count, flags);
+        gOutput_Timed_Queue->push(sockfd, 0, reinterpret_cast<const char*>(buf), count);
+        res = count;
 
         std::cout << "[[InTCPtor: overriden send() call, result = " << res << "]]" << std::endl;
     }
+
+    // no longer needed
+    lock.unlock();
 
     return res;
 }
