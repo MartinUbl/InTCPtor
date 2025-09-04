@@ -16,12 +16,16 @@ CRandom_Socket_Closer::TPtr gRandom_Socket_Closer;
 CRandom_Socket_Closer::CRandom_Socket_Closer() {
 
     if (!gConfig->Should_Drop_Connections()) {
-        std::cout << "[[InTCPtor: not dropping connections]]" << std::endl;
+        if (gConfig->Is_Log_Enabled()) {
+            std::cout << "[[InTCPtor: not dropping connections]]" << std::endl;
+        }
         _running = false;
         return;
     }
 
-    std::cout << "[[InTCPtor: will randomly drop connections with delay between " << gConfig->GetDrop_Connection_Delay_Ms_Min() << " and " << gConfig->GetDrop_Connection_Delay_Ms_Max() << " ms]]" << std::endl;
+    if (gConfig->Is_Log_Enabled()) {
+        std::cout << "[[InTCPtor: will randomly drop connections with delay between " << gConfig->GetDrop_Connection_Delay_Ms_Min() << " and " << gConfig->GetDrop_Connection_Delay_Ms_Max() << " ms]]" << std::endl;
+    }
     _running = true;
     _worker = std::thread(&CRandom_Socket_Closer::worker, this);
 }
@@ -52,7 +56,9 @@ void CRandom_Socket_Closer::worker() {
 
         if (it != intcptor::managed_sockets.end()) {
 
-            std::cout << "[[InTCPtor: closing random client socket: " << *it << "]]" << std::endl;
+            if (gConfig->Is_Log_Enabled()) {
+                std::cout << "[[InTCPtor: closing random client socket: " << *it << "]]" << std::endl;
+            }
 
             // it is important to call shutdown, to block further transmission on the socket
             orig::shutdown(*it, SHUT_RDWR);

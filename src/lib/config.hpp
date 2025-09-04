@@ -30,6 +30,8 @@ class CConfig {
         size_t mDrop_Connection_Delay_Ms_Min = 5000;
         size_t mDrop_Connection_Delay_Ms_Max = 15000;
 
+        bool mLog_Enabled = true;
+
         std::default_random_engine mRandEng;
         std::normal_distribution<double> mSendDelayDist;
         std::uniform_real_distribution<double> mProbDist;
@@ -69,6 +71,8 @@ class CConfig {
         bool Should_Drop_Connections() const { return mDrop_Connections; }
         size_t GetDrop_Connection_Delay_Ms_Min() const { return mDrop_Connection_Delay_Ms_Min; }
         size_t GetDrop_Connection_Delay_Ms_Max() const { return mDrop_Connection_Delay_Ms_Max; }
+
+        bool Is_Log_Enabled() const { return mLog_Enabled; }
 };
 
 extern CConfig::TPtr gConfig;

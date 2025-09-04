@@ -91,6 +91,7 @@ The InTCPtor creates default configuration file named `intcptor_config.cfg` when
 |`Drop_Connections`|0|Randomly drop connections (simulate network disruptions)|
 |`Drop_Connection_Delay_Ms_Min`|5000|Minimal delay for connection drops|
 |`Drop_Connection_Delay_Ms_Max`|15000|Maximal delay for connection drops|
+|`Log_Enabled`|1|Is detailed logging enabled?|
 
 ## Planned features
 

@@ -51,6 +51,7 @@ CStartup_Guard::CStartup_Guard() {
         std::cerr << "[[InTCPtor: failed to find original shutdown() function]]" << std::endl;
     }
 
+    // this log is excluded from the conditional, because we always want to know if the library is loaded
     std::cout << "[[InTCPtor: intercepting socket calls]]" << std::endl;
 
     // initialize all other globals

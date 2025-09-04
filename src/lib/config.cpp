@@ -104,6 +104,11 @@ void CConfig::Load_Default_Path() {
             if constexpr (Debug_Config_Outputs) {
                 std::cout << "[[InTCPtor: config Drop_Connection_Delay_Ms_Max = " << mDrop_Connection_Delay_Ms_Max << " ]]" << std::endl;
             }
+        } else if (key == "Log_Enabled") {
+            iss >> mLog_Enabled;
+            if constexpr (Debug_Config_Outputs) {
+                std::cout << "[[InTCPtor: config Log_Enabled = " << mLog_Enabled << " ]]" << std::endl;
+            }
         }
     }
 
@@ -131,6 +136,7 @@ void CConfig::Save_Default() {
     file << "Drop_Connections " << mDrop_Connections << std::endl;
     file << "Drop_Connection_Delay_Ms_Min " << mDrop_Connection_Delay_Ms_Min << std::endl;
     file << "Drop_Connection_Delay_Ms_Max " << mDrop_Connection_Delay_Ms_Max << std::endl;
+    file << "Log_Enabled " << mLog_Enabled << std::endl;
 
     std::cout << "[[InTCPtor: saved config file]]" << std::endl;
 }

@@ -46,7 +46,9 @@ extern "C" int socket(int domain, int type, int protocol) {
 
     int res = orig::socket(domain, type, protocol);
 
-    std::cout << "[[InTCPtor: overriden socket() call, result = " << res << "]]" << std::endl;
+    if (gConfig->Is_Log_Enabled()) {
+        std::cout << "[[InTCPtor: overriden socket() call, result = " << res << "]]" << std::endl;
+    }
 
     intcptor::created_sockets.insert(res);
 
@@ -59,15 +61,21 @@ extern "C" int close(int fd) {
     std::unique_lock<std::recursive_mutex> lock(intcptor::glob_mutex);
 
     if (intcptor::created_sockets.find(fd) != intcptor::created_sockets.end()) {
-        std::cout << "[[InTCPtor: overriden close() call for server socket fd = " << fd << "]]" << std::endl;
+        if (gConfig->Is_Log_Enabled()) {
+            std::cout << "[[InTCPtor: overriden close() call for server socket fd = " << fd << "]]" << std::endl;
+        }
         intcptor::created_sockets.erase(fd);
     }
     else if (intcptor::managed_sockets.find(fd) != intcptor::managed_sockets.end()) {
-        std::cout << "[[InTCPtor: overriden close() call for client socket fd = " << fd << "]]" << std::endl;
+        if (gConfig->Is_Log_Enabled()) {
+            std::cout << "[[InTCPtor: overriden close() call for client socket fd = " << fd << "]]" << std::endl;
+        }
         intcptor::managed_sockets.erase(fd);
     }
     else {
-        std::cout << "[[InTCPtor: overriden close() call for non-managed fd = " << fd << "]]" << std::endl;
+        if (gConfig->Is_Log_Enabled()) {
+            std::cout << "[[InTCPtor: overriden close() call for non-managed fd = " << fd << "]]" << std::endl;
+        }
     }
 
     return orig::close(fd);
@@ -81,7 +89,9 @@ extern "C" int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen) {
 
     int res = orig::accept(sockfd, addr, addrlen);
 
-    std::cout << "[[InTCPtor: overriden accept() call, result = " << res << "]]" << std::endl;
+    if (gConfig->Is_Log_Enabled()) {
+        std::cout << "[[InTCPtor: overriden accept() call, result = " << res << "]]" << std::endl;
+    }
 
     intcptor::managed_sockets.insert(res);
 
@@ -112,7 +122,9 @@ extern "C" ssize_t recv(int sockfd, void *buf, size_t count, int flags) {
                 count -= 2;
             }
 
-            std::cout << "[[InTCPtor: recv() original count = " << orig << ", adjusted = " << count << "]]" << std::endl;
+            if (gConfig->Is_Log_Enabled()) {
+                std::cout << "[[InTCPtor: recv() original count = " << orig << ", adjusted = " << count << "]]" << std::endl;
+            }
         }
     }
 
@@ -121,7 +133,9 @@ extern "C" ssize_t recv(int sockfd, void *buf, size_t count, int flags) {
 
     ssize_t res = orig::recv(sockfd, buf, count, flags);
 
-    std::cout << "[[InTCPtor: overriden recv() call, result = " << res << "]]" << std::endl;
+    if (gConfig->Is_Log_Enabled()) {
+        std::cout << "[[InTCPtor: overriden recv() call, result = " << res << "]]" << std::endl;
+    }
 
     return res;
 }
@@ -156,24 +170,32 @@ extern "C" ssize_t send(int sockfd, const void *buf, size_t count, int flags) {
                 for (size_t i = 0; i < count; i++) {
                     adjusted_send(i, 1);
                 }
-                std::cout << "[[InTCPtor: send() original count = " << count << ", adjusted to 1B sends]]" << std::endl;
+                if (gConfig->Is_Log_Enabled()) {
+                    std::cout << "[[InTCPtor: send() original count = " << count << ", adjusted to 1B sends]]" << std::endl;
+                }
             }
             else if (chance < gConfig->GetProb_Send__1B_Sends() + gConfig->GetProb_Send__2_Separate_Sends()) {
                 const size_t half = count / 2;
                 adjusted_send(0, half);
                 adjusted_send(half, count - half);
-                std::cout << "[[InTCPtor: send() original count = " << count << ", adjusted to 2 separate sends]]" << std::endl;
+                if (gConfig->Is_Log_Enabled()) {
+                    std::cout << "[[InTCPtor: send() original count = " << count << ", adjusted to 2 separate sends]]" << std::endl;
+                }
             }
             else if (chance < gConfig->GetProb_Send__1B_Sends() + gConfig->GetProb_Send__2_Separate_Sends() + gConfig->GetProb_Send__2B_Sends_And_Second_Send()) {
                 adjusted_send(0, 2);
                 adjusted_send(2, count - 2);
-                std::cout << "[[InTCPtor: send() original count = " << count << ", adjusted to 2B sends and second send]]" << std::endl;
+                if (gConfig->Is_Log_Enabled()) {
+                    std::cout << "[[InTCPtor: send() original count = " << count << ", adjusted to 2B sends and second send]]" << std::endl;
+                }
             }
             else {
                 for (size_t i = 0; i < count; i += 2) {
                     adjusted_send(i, 2);
                 }
-                std::cout << "[[InTCPtor: send() original count = " << count << ", adjusted to 2B sends]]" << std::endl;
+                if (gConfig->Is_Log_Enabled()) {
+                    std::cout << "[[InTCPtor: send() original count = " << count << ", adjusted to 2B sends]]" << std::endl;
+                }
             }
         }
     }
@@ -182,7 +204,9 @@ extern "C" ssize_t send(int sockfd, const void *buf, size_t count, int flags) {
         gOutput_Timed_Queue->push(sockfd, 0, reinterpret_cast<const char*>(buf), count);
         res = count;
 
-        std::cout << "[[InTCPtor: overriden send() call, result = " << res << "]]" << std::endl;
+        if (gConfig->Is_Log_Enabled()) {
+            std::cout << "[[InTCPtor: overriden send() call, result = " << res << "]]" << std::endl;
+        }
     }
 
     // no longer needed
@@ -200,7 +224,9 @@ extern "C" ssize_t read(int fd, void *buf, size_t count) {
         return orig::read(fd, buf, count);
     }
 
-    std::cout << "[[InTCPtor: override read() as recv() with flags = 0]]" << std::endl;
+    if (gConfig->Is_Log_Enabled()) {
+        std::cout << "[[InTCPtor: override read() as recv() with flags = 0]]" << std::endl;
+    }
 
     return recv(fd, buf, count, 0);
 }
@@ -214,7 +240,9 @@ extern "C" ssize_t write(int fd, const void *buf, size_t count) {
         return orig::write(fd, buf, count);
     }
 
-    std::cout << "[[InTCPtor: override write() as send() with flags = 0]]" << std::endl;
+    if (gConfig->Is_Log_Enabled()) {
+        std::cout << "[[InTCPtor: override write() as send() with flags = 0]]" << std::endl;
+    }
 
     return send(fd, buf, count, 0);
 }
@@ -228,14 +256,16 @@ extern "C" int shutdown(int sockfd, int how) {
     // furthermore, we should wait here until all sent data is actually sent, so we can't close the socket immediately
     // this is a TODO for future work, but may not be actually needed
 
-    if (intcptor::created_sockets.find(sockfd) != intcptor::created_sockets.end()) {
-        std::cout << "[[InTCPtor: overriden shutdown() call for server socket fd = " << sockfd << "]]" << std::endl;
-    }
-    else if (intcptor::managed_sockets.find(sockfd) != intcptor::managed_sockets.end()) {
-        std::cout << "[[InTCPtor: overriden shutdown() call for client socket fd = " << sockfd << "]]" << std::endl;
-    }
-    else {
-        std::cout << "[[InTCPtor: overriden shutdown() call for non-managed fd = " << sockfd << "]]" << std::endl;
+    if (gConfig->Is_Log_Enabled()) {
+        if (intcptor::created_sockets.find(sockfd) != intcptor::created_sockets.end()) {
+            std::cout << "[[InTCPtor: overriden shutdown() call for server socket fd = " << sockfd << "]]" << std::endl;
+        }
+        else if (intcptor::managed_sockets.find(sockfd) != intcptor::managed_sockets.end()) {
+            std::cout << "[[InTCPtor: overriden shutdown() call for client socket fd = " << sockfd << "]]" << std::endl;
+        }
+        else {
+            std::cout << "[[InTCPtor: overriden shutdown() call for non-managed fd = " << sockfd << "]]" << std::endl;
+        }
     }
 
     return orig::shutdown(sockfd, how);

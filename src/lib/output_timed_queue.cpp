@@ -9,11 +9,15 @@
 #include <iostream>
 
 #include "overrides.hpp"
+#include "config.hpp"
 
 COutput_Timed_Queue::TPtr gOutput_Timed_Queue;
 
 COutput_Timed_Queue::COutput_Timed_Queue() {
-    std::cout << "[[InTCPtor: starting output timed queue]]" << std::endl;
+    if (gConfig->Is_Log_Enabled()) {
+        std::cout << "[[InTCPtor: starting output timed queue]]" << std::endl;
+    }
+
     _running = true;
     _worker = std::thread(&COutput_Timed_Queue::worker, this);
 }
@@ -44,7 +48,9 @@ void COutput_Timed_Queue::worker() {
 
             lock.lock();
 
-            std::cout << "[[InTCPtor: sending " << std::string(data.data.data(), data.data.size()) << " bytes to socket " << data.target_socket << " after delay of " << data.delay << " ms]]" << std::endl;
+            if (gConfig->Is_Log_Enabled()) {
+                std::cout << "[[InTCPtor: sending " << std::string(data.data.data(), data.data.size()) << " bytes to socket " << data.target_socket << " after delay of " << data.delay << " ms]]" << std::endl;
+            }
             orig::send(data.target_socket, data.data.data(), data.data.size(), 0);
         }
     }
