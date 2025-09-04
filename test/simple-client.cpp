@@ -1,3 +1,13 @@
+/*
+ * InTCPtor - example simple TCP client
+ *
+ * This file contains a very simple TCP client to test the InTCPtor library.
+ * Messages start with "ABCD" and end with "\n"; the client performs very simple continual send/receive loop to ensure
+ * messages are properly sent and received as a whole.
+ * 
+ * WARNING: this is just a simple example, not a robust client implementation!
+ */
+
 #include <iostream>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -10,23 +20,10 @@
 #include <thread>
 #include <chrono>
 
+const std::string Default_Addr = "127.0.0.1";
+const int Default_Port = 10000;
+
 int main(int argc, char** argv) {
-
-	// store IP address and port number from argv
-	if (argc < 3) {
-		std::cerr << "Usage: " << argv[0] << " <IP address> <port number>" << std::endl;
-		return 1;
-	}
-
-	// store IP address to string
-	std::string ip_addr = argv[1];
-	// store port
-	int port = atoi(argv[2]);
-
-	if (port < 0 || port > 65535) {
-		std::cerr << "Invalid port number" << std::endl;
-		return 1;
-	}
 
 	int client_socket;
 	int return_value;
@@ -43,8 +40,8 @@ int main(int argc, char** argv) {
 	memset(&my_addr, 0, sizeof(struct sockaddr_in));
 
 	my_addr.sin_family = AF_INET;
-	my_addr.sin_port = htons(port);
-	my_addr.sin_addr.s_addr = inet_addr(ip_addr.c_str());
+	my_addr.sin_port = htons(Default_Port);
+	my_addr.sin_addr.s_addr = inet_addr(Default_Addr.c_str());
 
 	return_value = connect(client_socket, (struct sockaddr *)&my_addr, sizeof(struct sockaddr_in));
 	if (return_value != 0)  {
@@ -53,12 +50,15 @@ int main(int argc, char** argv) {
 
 	for (size_t ii = 0; ii < 10; ii++) {
 
+		// send some messages starting with expected header and ending with newline
 		send(client_socket, "ABCDtest\n", 9, 0);
 		send(client_socket, "ABCDtesttest\n", 13, 0);
 
 		char buf[128];
 		memset(buf, 0, 128);
 
+		// very simple receive loop until newline - receive bytes one by one
+		// WARNING: this is just a simple example, not a robust client implementation!
 		size_t pos = 0;
 		do {
 			recv(client_socket, buf + pos, 1, 0);

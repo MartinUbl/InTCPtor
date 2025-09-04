@@ -1,3 +1,13 @@
+/*
+ * InTCPtor - example simple TCP server
+ *
+ * This file contains a very simple TCP server to test the InTCPtor library.
+ * Messages start with "ABCD" and end with "\n"; the server performs very simple continual send/receive loop to ensure
+ * messages are properly sent and received as a whole.
+ *
+ * WARNING: this is just a simple example, not a robust server implementation!
+ */
+
 #include <iostream>
 #include <cstring>
 #include <sys/types.h>
@@ -7,6 +17,7 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 
+#include <map>
 #include <vector>
 #include <set>
 
@@ -39,31 +50,31 @@ int main(int argc, char** argv) {
     struct sockaddr_in address;
     fd_set readfds;
 
-    // Create socket
+    // create socket
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
         std::cerr << "Could not initialize socket" << std::endl;
         return -1;
     }
 
-    // Set socket options
+    // set socket options
     int opt = 1;
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
         std::cerr << "Could not set socket SO_REUSEADDR option" << std::endl;
         return -1;
     }
 
-    // Set server address
+    // set server address
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = inet_addr(server_bind_addr.c_str());
     address.sin_port = htons(port);
 
-    // Bind socket to address
+    // bind socket to address
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
         std::cerr << "Could not bind socket to address " << server_bind_addr << ":" << port << std::endl;
         return -1;
     }
 
-    // Listen for connections
+    // listen for connections
     if (listen(server_fd, 10) < 0) {
         std::cerr << "Could not listen on socket" << std::endl;
         return -1;
@@ -71,15 +82,18 @@ int main(int argc, char** argv) {
 
     std::cout << "Listening on " << server_bind_addr << ":" << port << std::endl;
 
+    std::map<int, std::vector<char>> buffers;
+    std::map<int, size_t> received_totals;
+
     while (true) {
-        // Clear the socket set
+        // clear the socket set
         FD_ZERO(&readfds);
 
-        // Add server socket to set
+        // add server socket to set
         FD_SET(server_fd, &readfds);
         max_sd = server_fd;
 
-        // Add child sockets to set
+        // add child sockets to set
         for (auto skt : client_socket) {
             if (skt > 0) {
                 FD_SET(skt, &readfds);
@@ -97,6 +111,7 @@ int main(int argc, char** argv) {
             return -2;
         }
 
+        // is there a new connection?
         if (FD_ISSET(server_fd, &readfds)) {
             int addrlen = sizeof(address);
             if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
@@ -107,39 +122,55 @@ int main(int argc, char** argv) {
             std::cout << "New connection from: " << inet_ntoa(address.sin_addr) << ":" << ntohs(address.sin_port) << std::endl;
 
             client_socket.insert(new_socket);
+            buffers[new_socket] = std::vector<char>(128);
+            received_totals[new_socket] = 0;
         }
 
         std::set<int> to_remove;
-        std::vector<char> buffer(128);
 
-        // Check all clients for incoming data
+        // check all clients for incoming data
         for (auto sd : client_socket) {
 
             if (FD_ISSET(sd, &readfds)) {
 
-                res = recv(sd, buffer.data(), static_cast<int>(buffer.size()), 0);
+                auto& buffer = buffers[sd];
+                auto& received_total = received_totals[sd];
 
+                res = recv(sd, buffer.data() + received_total, static_cast<int>(buffer.size()) - received_total, 0);
+
+                // error or connection closed by client
                 if (res <= 0) {
                     to_remove.insert(sd);
                 } else {
-                    if (std::string_view(buffer.data(), Hdr_Magic.size()) == Hdr_Magic) {
+                    received_total += res;
+                    if (received_total >= Hdr_Magic.size()) {
+                        if (std::string_view(buffer.data(), Hdr_Magic.size()) == Hdr_Magic) {
 
-                        // parse until newline
-                        int msg_len = 0;
-                        for (int i = Hdr_Magic.size(); i < res; i++) {
-                            if (buffer[i] == '\n') {
-                                msg_len = i - Hdr_Magic.size();
-                                break;
+                            // parse until newline
+                            int msg_len = 0;
+                            for (int i = Hdr_Magic.size(); i < received_total; i++) {
+                                if (buffer[i] == '\n') {
+                                    msg_len = i - Hdr_Magic.size();
+                                    break;
+                                }
                             }
+
+                            // if we have a full message, process it
+                            // otherwise, wait for more data
+                            if (msg_len > 0) {
+                                std::string message(buffer.data() + Hdr_Magic.size(), msg_len);
+                                std::cout << "Received message: " << message << std::endl;
+
+                                received_total = 0;
+
+                                send(sd, "ABCDhellothere\n", 15, 0);
+                            }
+                        } else { 
+                            std::cerr << "Invalid message format" << std::endl;
+
+                            // reset the counter on invalid message
+                            received_total = 0;
                         }
-
-                        std::string message(buffer.data() + Hdr_Magic.size(), msg_len);
-                        std::cout << "Received message: " << message << std::endl;
-
-                        send(sd, "ABCDhellothere\n", 15, 0);
-                    } else { 
-                        std::cerr << "Invalid message format" << std::endl;
-                        //to_remove.insert(sd);
                     }
                 }
             }
@@ -149,6 +180,8 @@ int main(int argc, char** argv) {
         for (auto sd : to_remove) {
             close(sd);
             client_socket.erase(sd);
+            buffers.erase(sd);
+            received_totals.erase(sd);
         }
     }
 
